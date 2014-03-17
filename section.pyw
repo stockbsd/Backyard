@@ -1,3 +1,4 @@
+#!python3
 # -*- coding: utf-8 -*-
 from PyQt5 import QtCore, QtGui, QtWidgets
 import math
@@ -152,9 +153,11 @@ class SecView(QtWidgets.QGraphicsView):
 if __name__ == '__main__':
     import sys
     app = QtWidgets.QApplication(sys.argv)
+    scr = app.primaryScreen()
+    print(scr.devicePixelRatio(), scr.size(), scr.physicalSize(), scr.logicalDotsPerInch(), scr.physicalDotsPerInch())
 
     mul = 2.0
-    cw = [(100.*mul, [100., 135., 162.0, 230., 342., 370.]), 
+    cwo = [(100.*mul, [100., 135., 162.0, 230., 342., 370.]),
         (200.*mul, [110., 135., 163.0, 190., 234.]), 
         (270.*mul, [100., 115., 142.0, 210., 262.]), 
         (400.*mul, [230., 275., 312.0, 320., 332., 360.]), 
@@ -166,7 +169,7 @@ if __name__ == '__main__':
         (950.*mul, [236., 309., 346.0, 395., 422., 450.0]), 
         (990.*mul, [326., 389., 426.0, 445., 472., 490.0]), 
     ]
-    widget = SecView(cw[::], 1, 2)
+    widget = SecView(cwo[::], 1, 2)
     widget.show()
 
     sys.exit(app.exec_())
