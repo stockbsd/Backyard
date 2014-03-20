@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="/">
+    <file>res/gold.ico</file>
+    <file>res/color.ico</file>
+    <file>res/lepre.ico</file>
+  </qresource>
+</RCC>
