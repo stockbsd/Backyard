@@ -97,6 +97,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="dockWidget_3">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
@@ -104,8 +110,14 @@
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QTabWidget" name="tabWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
@@ -186,7 +198,7 @@
   <action name="actionExit_2">
    <property name="icon">
     <iconset resource="unone.qrc">
-     <normaloff>:/res/gold.ico</normaloff>:/res/gold.ico</iconset>
+     <normaloff>:/res/lepre.ico</normaloff>:/res/lepre.ico</iconset>
    </property>
    <property name="text">
     <string>Exit</string>
