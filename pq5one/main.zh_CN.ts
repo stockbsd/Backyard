@@ -46,27 +46,27 @@
     <message>
         <location filename="unone.ui" line="192"/>
         <source>Exit</source>
-        <translation type="unfinished"></translation>
+        <translation>退出</translation>
     </message>
     <message>
         <location filename="unone.ui" line="159"/>
         <source>About</source>
-        <translation type="unfinished"></translation>
+        <translation>关于</translation>
     </message>
     <message>
         <location filename="unone.ui" line="168"/>
         <source>Open</source>
-        <translation type="unfinished"></translation>
+        <translation>打开</translation>
     </message>
     <message>
         <location filename="unone.ui" line="178"/>
         <source>Copy</source>
-        <translation type="unfinished"></translation>
+        <translation>拷贝</translation>
     </message>
     <message>
         <location filename="unone.ui" line="183"/>
         <source>Exit2</source>
-        <translation type="unfinished"></translation>
+        <translation>退出吧</translation>
     </message>
 </context>
 </TS>
