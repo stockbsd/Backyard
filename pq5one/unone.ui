@@ -144,6 +144,20 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionNew"/>
+   <addaction name="actionAbout"/>
+   <addaction name="actionOpen"/>
+  </widget>
   <action name="actionNew">
    <property name="icon">
     <iconset resource="unone.qrc">
@@ -168,7 +182,7 @@
      <normaloff>:/res/gold.ico</normaloff>:/res/gold.ico</iconset>
    </property>
    <property name="text">
-    <string>About</string>
+    <string>About Pq5</string>
    </property>
   </action>
   <action name="actionOpen">
@@ -201,7 +215,7 @@
      <normaloff>:/res/lepre.ico</normaloff>:/res/lepre.ico</iconset>
    </property>
    <property name="text">
-    <string>Exit</string>
+    <string>Exit PQ5</string>
    </property>
   </action>
  </widget>
