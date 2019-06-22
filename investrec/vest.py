@@ -29,6 +29,7 @@ def loadRec(fn):
         sumdf = df.groupby('分类')['最新市值', '浮动盈亏'].sum()
         sumdf = sumdf[sumdf['最新市值']>0]
         sumdf['浮盈比'] = sumdf.apply(lambda r: r['浮动盈亏']/r['最新市值'] , axis=1)
+        sumdf['仓比'] = sumdf.apply(lambda r: r['最新市值']/total, axis=1)
         print(sumdf)
         print()
         #for r in df.itertuples(index=False, name='Sec'):
