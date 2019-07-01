@@ -3,6 +3,7 @@
 import pandas as pd
 
 orig = 5632000.0
+orig190101 = 5376000.0
 
 def getType(code):
     cl = [('159','ETF'),('002','股票'), ('300', '股票'), ('511', '货币'),
@@ -21,7 +22,7 @@ def loadRec(fn):
         info = l.split(':', 1)[1]
         di = dict((k,float(v)) for k,v in (s.split(':') for s in info.split()))
         total = di['资产']
-        print(total, orig, total-orig, total/orig-1)
+        print('{:.2f} {:.2f} {:.2f} {:.2%}'.format(total, orig, total-orig, total/orig-1))
         _,_1 = next(f), next(f)
 
         df = pd.read_csv(f, delim_whitespace=True, dtype={0:str, 13:str, 14:str, 16:str})
@@ -31,7 +32,6 @@ def loadRec(fn):
         sumdf['浮盈比'] = sumdf.apply(lambda r: r['浮动盈亏']/r['最新市值'] , axis=1)
         sumdf['仓比'] = sumdf.apply(lambda r: r['最新市值']/total, axis=1)
         print(sumdf)
-        print()
         #for r in df.itertuples(index=False, name='Sec'):
         #    print(r[0], r[1], getType(r[0]))
         #print(df.head(1))
@@ -41,3 +41,4 @@ if __name__ == '__main__':
     cd = pathlib.Path(".")
     for cf in sorted(cd.glob('*.txt')):
         loadRec(cf)
+        print()
