@@ -22,7 +22,7 @@ def loadRec(fn):
         info = l.split(':', 1)[1]
         di = dict((k,float(v)) for k,v in (s.split(':') for s in info.split()))
         total = di['资产']
-        print('{:.2f} {:.2f} {:.2f} {:.2%}'.format(total, orig, total-orig, total/orig-1))
+        print('{:.2f} {:.2f} {:.2f} {:.2%} {:.2%}'.format(total, orig, total-orig, total/orig-1, total/orig190101-1))
         _,_1 = next(f), next(f)
 
         df = pd.read_csv(f, delim_whitespace=True, dtype={0:str, 13:str, 14:str, 16:str})
@@ -31,7 +31,8 @@ def loadRec(fn):
         sumdf = sumdf[sumdf['最新市值']>0]
         sumdf['浮盈比'] = sumdf.apply(lambda r: r['浮动盈亏']/r['最新市值'] , axis=1)
         sumdf['仓比'] = sumdf.apply(lambda r: r['最新市值']/total, axis=1)
-        print(sumdf)
+        #print(sumdf.style.format({'浮盈比':'{:+.2%}', '仓比':'{:.2f}'}).render())
+        print(sumdf.to_string(formatters={'浮盈比':'{:+.2%}'.format, '仓比':'{:.2%}'.format}))
         #for r in df.itertuples(index=False, name='Sec'):
         #    print(r[0], r[1], getType(r[0]))
         #print(df.head(1))

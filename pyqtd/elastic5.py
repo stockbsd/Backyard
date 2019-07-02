@@ -45,11 +45,11 @@
 import math
 
 from PyQt5.QtCore import (qAbs, QLineF, QPointF, qrand, QRectF, QSizeF, qsrand,
-        Qt, QTime)
+                          Qt, QTime)
 from PyQt5.QtGui import (QBrush, QColor, QLinearGradient, QPainter,
-        QPainterPath, QPen, QPolygonF, QRadialGradient)
+                         QPainterPath, QPen, QPolygonF, QRadialGradient)
 from PyQt5.QtWidgets import (QApplication, QGraphicsItem, QGraphicsScene,
-        QGraphicsView, QStyle)
+                             QGraphicsView, QStyle)
 
 
 class Edge(QGraphicsItem):
@@ -94,14 +94,14 @@ class Edge(QGraphicsItem):
             return
 
         line = QLineF(self.mapFromItem(self.source, 0, 0),
-                self.mapFromItem(self.dest, 0, 0))
+                      self.mapFromItem(self.dest, 0, 0))
         length = line.length()
 
         self.prepareGeometryChange()
 
         if length > 20.0:
             edgeOffset = QPointF((line.dx() * 10) / length,
-                    (line.dy() * 10) / length)
+                                 (line.dy() * 10) / length)
 
             self.sourcePoint = line.p1() + edgeOffset
             self.destPoint = line.p2() - edgeOffset
@@ -117,8 +117,8 @@ class Edge(QGraphicsItem):
         extra = (penWidth + self.arrowSize) / 2.0
 
         return QRectF(self.sourcePoint,
-                QSizeF(self.destPoint.x() - self.sourcePoint.x(),
-                        self.destPoint.y() - self.sourcePoint.y())).normalized().adjusted(-extra, -extra, extra, extra)
+                      QSizeF(self.destPoint.x() - self.sourcePoint.x(),
+                             self.destPoint.y() - self.sourcePoint.y())).normalized().adjusted(-extra, -extra, extra, extra)
 
     def paint(self, painter, option, widget):
         if not self.source or not self.dest:
@@ -131,7 +131,7 @@ class Edge(QGraphicsItem):
             return
 
         painter.setPen(QPen(Qt.black, 1, Qt.SolidLine, Qt.RoundCap,
-                Qt.RoundJoin))
+                            Qt.RoundJoin))
         painter.drawLine(line)
 
         # Draw the arrows if there's enough room.
@@ -140,13 +140,13 @@ class Edge(QGraphicsItem):
             angle = Edge.TwoPi - angle
 
         sourceArrowP1 = self.sourcePoint + QPointF(math.sin(angle + Edge.Pi / 3) * self.arrowSize,
-                                                          math.cos(angle + Edge.Pi / 3) * self.arrowSize)
+                                                   math.cos(angle + Edge.Pi / 3) * self.arrowSize)
         sourceArrowP2 = self.sourcePoint + QPointF(math.sin(angle + Edge.Pi - Edge.Pi / 3) * self.arrowSize,
-                                                          math.cos(angle + Edge.Pi - Edge.Pi / 3) * self.arrowSize);   
+                                                   math.cos(angle + Edge.Pi - Edge.Pi / 3) * self.arrowSize);   
         destArrowP1 = self.destPoint + QPointF(math.sin(angle - Edge.Pi / 3) * self.arrowSize,
-                                                      math.cos(angle - Edge.Pi / 3) * self.arrowSize)
+                                               math.cos(angle - Edge.Pi / 3) * self.arrowSize)
         destArrowP2 = self.destPoint + QPointF(math.sin(angle - Edge.Pi + Edge.Pi / 3) * self.arrowSize,
-                                                      math.cos(angle - Edge.Pi + Edge.Pi / 3) * self.arrowSize)
+                                               math.cos(angle - Edge.Pi + Edge.Pi / 3) * self.arrowSize)
 
         painter.setBrush(Qt.black)
         painter.drawPolygon(QPolygonF([line.p1(), sourceArrowP1, sourceArrowP2]))
@@ -182,7 +182,7 @@ class Node(QGraphicsItem):
         if not self.scene() or self.scene().mouseGrabberItem() is self:
             self.newPos = self.pos()
             return
-    
+
         # Sum up all forces pushing this item away.
         xvel = 0.0
         yvel = 0.0
@@ -207,7 +207,7 @@ class Node(QGraphicsItem):
                 pos = self.mapFromItem(edge.sourceNode(), 0, 0)
             xvel += pos.x() / weight
             yvel += pos.y() / weight
-    
+
         if qAbs(xvel) < 0.1 and qAbs(yvel) < 0.1:
             xvel = yvel = 0.0
 
@@ -377,13 +377,13 @@ class GraphWidget(QGraphicsView):
         # Shadow.
         sceneRect = self.sceneRect()
         rightShadow = QRectF(sceneRect.right(), sceneRect.top() + 5, 5,
-                sceneRect.height())
+                             sceneRect.height())
         bottomShadow = QRectF(sceneRect.left() + 5, sceneRect.bottom(),
-                sceneRect.width(), 5)
+                              sceneRect.width(), 5)
         if rightShadow.intersects(rect) or rightShadow.contains(rect):
-	        painter.fillRect(rightShadow, Qt.darkGray)
+            painter.fillRect(rightShadow, Qt.darkGray)
         if bottomShadow.intersects(rect) or bottomShadow.contains(rect):
-	        painter.fillRect(bottomShadow, Qt.darkGray)
+            painter.fillRect(bottomShadow, Qt.darkGray)
 
         # Fill.
         gradient = QLinearGradient(sceneRect.topLeft(), sceneRect.bottomRight())
@@ -395,9 +395,9 @@ class GraphWidget(QGraphicsView):
 
         # Text.
         textRect = QRectF(sceneRect.left() + 4, sceneRect.top() + 4,
-                sceneRect.width() - 4, sceneRect.height() - 4)
+                          sceneRect.width() - 4, sceneRect.height() - 4)
         message = "Click and drag the nodes around, and zoom with the " \
-                "mouse wheel or the '+' and '-' keys"
+            "mouse wheel or the '+' and '-' keys"
 
         font = painter.font()
         font.setBold(True)

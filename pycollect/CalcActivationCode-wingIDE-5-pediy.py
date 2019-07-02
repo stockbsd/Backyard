@@ -90,7 +90,8 @@ def AddHyphens(code):
 
 LicenseID='EN123-12345-12345-66666'
 #Copy the Request Code from the dialog
-RequestCode='RW52Q-Y4EEP-8Q3RJ-PYL6E'
+RequestCode='RM73B-TPAT5-1XM9N-4J6RL'
+
 hasher = sha.new()
 hasher.update(RequestCode)
 hasher.update(LicenseID)
