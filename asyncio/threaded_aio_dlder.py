@@ -14,7 +14,7 @@ def loop_in_thread(async_entry, *args, **kwargs):
     loop.close()
     log.info('loop end...')
 
-class AsyncDlder():
+class AioDownloader():
     def __init__(self):
         self.q = Queue()
         self.threads = []
@@ -37,34 +37,40 @@ class AsyncDlder():
     def add_url(self, url, dest):
         self.q.put((url, dest))
 
-    async def inf_downloader(self, session):
-        while True:
-            try:
-                item, dest = self.q.get(False)
-                if item is None:
-                    self.log.info('Queue Finished')
-                    self.add_endsignal()
-                    break
+    async def downloader(self, session, url, dest, sem):
+        try:
+            now = time.time()
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.read()
+                    with open(dest, 'wb') as f:
+                        f.write(data)
+                    self.log.info(f'{resp.url} ==> {dest}, {time.time()-now:.2f}s used')
                 else:
-                    now = time.time()
-                    async with session.get(item) as resp:
-                        if resp.status == 200:
-                            data = await resp.read()
-                            with open(dest, 'wb') as f:
-                                f.write(data)
-                            self.log.info(f'{resp.url} ==> {dest}, use {time.time()-now:.2f}s')
-            except Empty:
-                self.log.info('Waiting for Queue')
-                await asyncio.sleep(0.1)
-            except Exception as e:
-                self.log.info(f'processing error: {e}')
+                    self.log.warning(f'{resp.url} status = {resp.status}')
+        except Exception as e:
+            self.log.warning(f'{url} failed: {e}')
+        finally:
+            sem.release()
 
     # async entry point
     async def sched_downloaders(self, num_coros):
         loop = asyncio.get_running_loop()
+        sem = asyncio.Semaphore(num_coros)
         async with aiohttp.ClientSession(loop=loop) as session:
-            tasks = [loop.create_task(self.inf_downloader(session)) for _ in range(num_coros)]
-            await asyncio.gather(*tasks, loop=loop)
+            tasks = []
+            while True:
+                await sem.acquire()
+                
+                url, dest = self.q.get(True)   #block
+                if url is None:
+                    self.log.info('Queue Finished')
+                    self.add_endsignal()    #notify peer threads
+                    break
+                else:
+                    tasks.append(loop.create_task(self.downloader(session, url, dest, sem)))
+            # waiting for downloader tasks to finish
+            await asyncio.gather(*[t for t in tasks if not t.done()])
 
 
 if "__main__" == __name__:
@@ -76,14 +82,13 @@ if "__main__" == __name__:
         stream=sys.stderr,
     )
 
-    t0 = time.time()
-    
-    dld = AsyncDlder()
+    dld = AioDownloader()
     for i in range(30):
         dld.add_url(f"http://httpbin.org/delay/1?a={i}", '/dev/null')
     dld.add_endsignal()
 
-    log = logging.getLogger('')
+    t0 = time.time()
+    log = logging.getLogger('main')    
     log.info('start worker threads')
 
     dld.start(2, 5)
