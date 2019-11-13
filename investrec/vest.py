@@ -13,7 +13,7 @@ capinfo = {
 
 def getType(code):
     cl = [('159','ETF'),('002','股票'), ('300', '股票'), ('511', '货币'),
-            ('11','转债'), ('12', '转债'), ('51', 'ETF'),
+            ('11','转债'), ('12', '转债'), ('51', 'ETF'), ('15', '基金'),('16', '基金'),
             ('6', '股票'), ('0', '股票')]
     for prefix, tp in cl:
         if code.startswith(prefix):
@@ -63,22 +63,25 @@ def updateDB(path, conn, bTest):
 
 def analInvest(conn):
     dfc_all = pd.read_sql_query('select * from cap', conn)
-    dfc_latest = dfc_all.loc[dfc_all['日期'] == dfc_all['日期'].max()]
-    #print(dfc_latest)
-    for ind, row in dfc_latest.iterrows():
-        keystr = row['资金账号']
-        total = row['资产']
-        orig = capinfo[keystr][0]
-        orig01 = capinfo[keystr][-1]
-        print('{:s} {:.2f} {:.2f} {:.2f} {:.2%} {:.2f} {:.2%}'.format(keystr,
-            orig, total, total-orig, total/orig-1, total-orig01, total/orig01-1))
+    latest = dfc_all['日期'].max()
 
+    dfc_latest = dfc_all.loc[dfc_all['日期'] == latest, ['资金账号','资产']].set_index('资金账号')
+    dfc_latest['原始'] = dfc_latest.index.map(lambda zh:capinfo[zh][0])
+    dfc_latest['年初'] = dfc_latest.index.map(lambda zh:capinfo[zh][-1])
+    dfc_latest.loc['Total',:] = dfc_latest.sum(axis=0)  #sum as a new row
+    dfc_latest['总收益'] = dfc_latest['资产']-dfc_latest['原始']
+    dfc_latest['总收益率'] = dfc_latest['资产']/dfc_latest['原始'] -1
+    dfc_latest['年收益'] = dfc_latest['资产']-dfc_latest['年初'] 
+    dfc_latest['年收益率'] = dfc_latest['资产']/dfc_latest['年初'] -1
+    print(dfc_latest.to_string(formatters={'总收益率':'{:+.2%}'.format, '年收益率':'{:.2%}'.format}))
+
+    total = dfc_latest.loc['Total','资产']
     df_all  = pd.read_sql_query('select * from his', conn)
     df_all['分类'] = df_all['证券代码'].map(getType)
-
-    df = df_all.loc[df_all['日期'] == df_all['日期'].max()]
+    df = df_all.loc[df_all['日期'] == latest]
     sumdf = df.groupby('分类')['最新市值', '浮动盈亏'].sum()
     sumdf = sumdf[sumdf['最新市值']>0]
+    sumdf.loc['汇总',:] = sumdf.sum(axis=0)
     sumdf['浮盈比'] = sumdf.apply(lambda r: r['浮动盈亏']/r['最新市值'] , axis=1)
     sumdf['仓比'] = sumdf.apply(lambda r: r['最新市值']/total, axis=1)
     print(sumdf.to_string(formatters={'浮盈比':'{:+.2%}'.format, '仓比':'{:.2%}'.format}))
@@ -98,10 +101,16 @@ def update(ctx, src, test):
     cd = pathlib.Path(src).absolute()
     updateDB(cd, ctx.obj['con'], test)
 
+def main():
+    try:
+        execdir = pathlib.Path(__file__).absolute().parent
+        conn = sqlite3.connect(execdir/'his.sqlite3')
+
+        cli(obj={'con':conn})
+    except Exception as e:
+        print(e)
+    finally:
+        conn.close()
+
 if __name__ == '__main__':
-    execdir = pathlib.Path(__file__).absolute().parent
-    conn = sqlite3.connect(execdir/'his.sqlite3')
-
-    cli(obj={'con':conn})
-
-    conn.close()
+    main()
