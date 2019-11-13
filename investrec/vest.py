@@ -21,8 +21,7 @@ def getType(code):
     else:
         return '其他'
 
-def loadRec(fn, conn):
-    print(fn.name)
+def loadRec(fn, conn, bTest):
     try:
         with open(fn, encoding='gb2312') as f:
             l = next(f)
@@ -32,20 +31,35 @@ def loadRec(fn, conn):
             _,_1 = next(f), next(f)
 
             df = pd.read_csv(f, delim_whitespace=True, dtype={0:str, 13:str, 14:str, 16:str})
-            df['日期'] = fn.name[:8]
-            df.to_sql('his', conn, if_exists="append", index=False)
+            if len(df.columns)==17:
+                df['冻结数量'] = df['交易冻结数量'] + df['异常冻结']
+                df.drop(columns=['备注','交易冻结数量','异常冻结','客户代码'], inplace=True)
+                df.rename({"股份余额": "证券数量", "可用股份": "可卖数量", "在途股份": "在途数量"}, axis=1, inplace=True)
 
-            dfc = pd.DataFrame({k:[v] for k,v in di.items()})
+            df['日期'] = fn.name[:8] 
+            if bTest:
+                #print(', '.join(df.columns.values))
+                #print(df.dtypes)
+                print(df.head(3))
+            else:
+                df.to_sql('his', conn, if_exists="append", index=False)
+
+            dfc = pd.DataFrame({k:[v] for k,v in di.items() if k != '在途'})
             dfc['日期'] = fn.name[:8]
             dfc['资金账号'] = df['资金帐号'].iloc[0]
-            dfc.to_sql('cap', conn, if_exists="append", index=False)
+            if bTest:
+                print(dfc.head(2))
+            else:
+                dfc.to_sql('cap', conn, if_exists="append", index=False)
     except Exception as e:
-        pass #print(e)
+        print(f'{fn.name} 出错：{e}')
+    else:
+        print(f'{fn.name} 处理完毕 ')
 
 
-def updateDB(path, conn):
+def updateDB(path, conn, bTest):
     for cf in sorted(path.rglob('*.txt')):
-        loadRec(cf, conn)
+        loadRec(cf, conn, bTest)
 
 def analInvest(conn):
     dfc_all = pd.read_sql_query('select * from cap', conn)
@@ -78,10 +92,11 @@ def cli(ctx):
 
 @cli.command()
 @click.argument("src")
+@click.option('-t', "--test", is_flag=True)
 @click.pass_context
-def update(ctx, src):
+def update(ctx, src, test):
     cd = pathlib.Path(src).absolute()
-    updateDB(cd, ctx.obj['con'])
+    updateDB(cd, ctx.obj['con'], test)
 
 if __name__ == '__main__':
     execdir = pathlib.Path(__file__).absolute().parent
