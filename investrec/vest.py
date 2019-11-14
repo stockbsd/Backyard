@@ -38,8 +38,6 @@ def loadRec(fn, conn, bTest):
 
             df['日期'] = fn.name[:8] 
             if bTest:
-                #print(', '.join(df.columns.values))
-                #print(df.dtypes)
                 print(df.head(3))
             else:
                 df.to_sql('his', conn, if_exists="append", index=False)
@@ -57,15 +55,16 @@ def loadRec(fn, conn, bTest):
         print(f'{fn.name} 处理完毕 ')
 
 
-def updateDB(path, conn, bTest):
-    for cf in sorted(path.rglob('*.txt')):
+def updateDB(path, conn, bRecursive, bTest):
+    func = path.rglob if bRecursive else path.glob
+    for cf in sorted(func('*.txt')):
         loadRec(cf, conn, bTest)
 
 def analInvest(conn):
     dfc_all = pd.read_sql_query('select * from cap', conn)
-    latest = dfc_all['日期'].max()
+    tday = dfc_all['日期'].max()
 
-    dfc_latest = dfc_all.loc[dfc_all['日期'] == latest, ['资金账号','资产']].set_index('资金账号')
+    dfc_latest = dfc_all.loc[dfc_all['日期'] == tday, ['资金账号','资产']].set_index('资金账号')
     dfc_latest['原始'] = dfc_latest.index.map(lambda zh:capinfo[zh][0])
     dfc_latest['年初'] = dfc_latest.index.map(lambda zh:capinfo[zh][-1])
     dfc_latest.loc['Total',:] = dfc_latest.sum(axis=0)  #sum as a new row
@@ -78,12 +77,12 @@ def analInvest(conn):
     total = dfc_latest.loc['Total','资产']
     df_all  = pd.read_sql_query('select * from his', conn)
     df_all['分类'] = df_all['证券代码'].map(getType)
-    df = df_all.loc[df_all['日期'] == latest]
+    df = df_all.loc[df_all['日期'] == tday]
     sumdf = df.groupby('分类')['最新市值', '浮动盈亏'].sum()
     sumdf = sumdf[sumdf['最新市值']>0]
     sumdf.loc['汇总',:] = sumdf.sum(axis=0)
-    sumdf['浮盈比'] = sumdf.apply(lambda r: r['浮动盈亏']/r['最新市值'] , axis=1)
-    sumdf['仓比'] = sumdf.apply(lambda r: r['最新市值']/total, axis=1)
+    sumdf['浮盈比'] = sumdf['浮动盈亏']/sumdf['最新市值'] #sumdf.apply(lambda r: r['浮动盈亏']/r['最新市值'] , axis=1)
+    sumdf['仓比'] = sumdf['最新市值']/total #sumdf.apply(lambda r: r['最新市值']/total, axis=1)
     print(sumdf.to_string(formatters={'浮盈比':'{:+.2%}'.format, '仓比':'{:.2%}'.format}))
 
 @click.group(invoke_without_command=True)
@@ -95,11 +94,12 @@ def cli(ctx):
 
 @cli.command()
 @click.argument("src")
+@click.option('-r', "--recursive", is_flag=True)
 @click.option('-t', "--test", is_flag=True)
 @click.pass_context
-def update(ctx, src, test):
+def update(ctx, src, recursive, test):
     cd = pathlib.Path(src).absolute()
-    updateDB(cd, ctx.obj['con'], test)
+    updateDB(cd, ctx.obj['con'], recursive, test)
 
 def main():
     try:
