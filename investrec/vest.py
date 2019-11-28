@@ -1,10 +1,10 @@
 # python
 
 import pandas as pd
-import sqlite3
+# import sqlite3
 import pathlib
 import click
-
+from sqlalchemy import create_engine
 
 capinfo = {
         '301719075442':[5632000.0, 5376000.],
@@ -34,7 +34,8 @@ def loadRec(fn, conn, bTest):
             if len(df.columns)==17:
                 df['冻结数量'] = df['交易冻结数量'] + df['异常冻结']
                 df.drop(columns=['备注','交易冻结数量','异常冻结','客户代码'], inplace=True)
-                df.rename({"股份余额": "证券数量", "可用股份": "可卖数量", "在途股份": "在途数量"}, axis=1, inplace=True)
+                df.rename({"股份余额": "证券数量", "可用股份": "可卖数量", "在途股份": "在途数量","盈亏比例(%)":"盈亏比例"}, 
+                    axis=1, inplace=True)
 
             df['日期'] = fn.name[:8] 
             if bTest:
@@ -63,6 +64,7 @@ def updateDB(path, conn, bRecursive, bTest):
 def analInvest(conn):
     dfc_all = pd.read_sql_query('select * from cap', conn)
     tday = dfc_all['日期'].max()
+    print(tday)
 
     dfc_latest = dfc_all.loc[dfc_all['日期'] == tday, ['资金账号','资产']].set_index('资金账号')
     dfc_latest['原始'] = dfc_latest.index.map(lambda zh:capinfo[zh][0])
@@ -102,15 +104,21 @@ def update(ctx, src, recursive, test):
     updateDB(cd, ctx.obj['con'], recursive, test)
 
 def main():
+    pg_eng =  create_engine("postgres://stockbsd:stockbsd@192.168.1.91:5432/postgres")
+
     try:
-        execdir = pathlib.Path(__file__).absolute().parent
-        conn = sqlite3.connect(execdir/'his.sqlite3')
+        # execdir = pathlib.Path(__file__).absolute().parent
+        # conn = sqlite3.connect(execdir/'his.sqlite3')
+        conn = pg_eng.connect()
+        conn.execute('set search_path to invest')
 
         cli(obj={'con':conn})
     except Exception as e:
         print(e)
     finally:
         conn.close()
+
+    pg_eng.dispose()
 
 if __name__ == '__main__':
     main()
