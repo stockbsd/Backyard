@@ -58,11 +58,17 @@ def getProxies(n, timeout=2):
 #         self.last = time.time()
 #         return super().get(*args, **kwargs)
 
-def net_sessions(proxies):
+def net_sessions(proxies, cktype=1):
+    cks = [
+        '',
+        'xq_a_token=c9d3b00a3bd89b210c0024ce7a2e049f437d4df3;', #anonymous user
+        'aliyungf_tc=AQAAAMMMjiWbCw8AJON2ca5e8P94fS2f; s=ck16erzsji; bid=47cef4283992c2b6bd935bdcd877e6dd_jz3m4fcj; snbim_minify=true; u=8347941443; acw_tc=2760822d15756697011777055e6f32a282d01493264a0a75e9187e5bcadf3b; xq_a_token=fd5aeeb678322a4465d174affc962efa5c58784f; xqat=fd5aeeb678322a4465d174affc962efa5c58784f; xq_r_token=03b2f32b7f1dcebccebe3a9a160c558895ca345c; xq_token_expire=Thu%20Jan%2002%202020%2012%3A36%3A21%20GMT%2B0800%20(China%20Standard%20Time); xq_is_login=1;',
+    ]
+    if cktype not in [1, 2]:
+        cktype = 0
+
     headers = {
-        # 'Cookie':'aliyungf_tc=AQAAAGS4K2BVQAUA4ZpccSpfiQ0TAZzf; acw_tc=2760823615741450343547074ed6d3da1e3cefce0ec5bdc579105a4235c520; s=bp18s3trg8; xq_a_token=5e0d8a38cd3acbc3002589f46fc1572c302aa8a2; xq_r_token=670668eda313118d7214487d800c21ad0202e141; u=691574145060230; Hm_lvt_1db88642e346389874251b5a1eded6e3=1574145064; Hm_lpvt_1db88642e346389874251b5a1eded6e3=1574145269; __utma=1.656725657.1574145064.1574145064.1574145064.1; __utmb=1.2.10.1574145064; __utmc=1; __utmz=1.1574145064.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); __utmt=1; device_id=07fedbd5879b248757ab08dce2d97298',
-        # 'Cookie':'bid=47cef4283992c2b6bd935bdcd877e6dd_jz3m4fcj;device_id=7130403e5178e54376d598e21601f31d;Hm_lpvt_1db88642e346389874251b5a1eded6e3=1573721803;Hm_lvt_1db88642e346389874251b5a1eded6e3=1573698944;s=ck16erzsji;snbim_minify=true;u=8347941443;xq_a_token=f82dd58de09ef3d915f9c349e1f3addca313e848;xq_is_login=1;xq_r_token=2e436404e09579cda5d3d03887e43c9a7dafb0c2;xq_token_expire=Mon%20Dec%2009%202019%2011%3A01%3A28%20GMT%2B0800%20(China%20Standard%20Time);xqat=f82dd58de09ef3d915f9c349e1f3addca313e848;__utma=1.1900063763.1573721440.1573721440.1573721440.1;__utmc=1;__utmz=1.1573721440.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none);acw_tc=2760827d15736989415012656ec9f7dbd31c77c0672df7b1030da4054accec;aliyungf_tc=AQAAAMMMjiWbCw8AJON2ca5e8P94fS2f;',
-        'Cookie': 'xq_a_token=5e0d8a38cd3acbc3002589f46fc1572c302aa8a2;', #anonymous user
+        'Cookie': cks[cktype],
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:70.0) Gecko/20100101 Firefox/70.0',
         'Accept': 'application/json, text/plain, */*',
         "Accept-Encoding": 'gzip, deflate, br',
@@ -81,8 +87,8 @@ def net_sessions(proxies):
         session.headers = headers
         if p:
             session.proxies = {'http':p, 'https':p}
-        if 'Cookie' not in session.headers:
-            session.get('https://xueqiu.com')       #get cookie , xq_a_token
+        if not session.headers['Cookie']:
+            session.get('https://xueqiu.com') #get cookie , xq_a_token
             logging.debug(session.cookies.get_dict())
         ss.append(session)
     
@@ -148,14 +154,13 @@ class TrdFetcher():
                     cfail = 0
                 else:
                     cfail += 1
-                    stime = min(4**cfail*inter, 300)
+                    stime = min(5**cfail*inter, 300)
                     time.sleep(stime)
                     self.log.debug(f'{cfail}, sleep {stime} seconds')
         # waiting for downloader tasks to finish
         self.log.info('Queue Finished')
 
 if "__main__" == __name__:
-    import sys
     from cube import get_cube_detail    
 
     logging.basicConfig(

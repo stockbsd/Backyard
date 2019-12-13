@@ -2,25 +2,12 @@
  
 import time, logging
 import json
+import requests
 from sqlalchemy import create_engine, MetaData, Table, func, select, exists
 from sqlalchemy.dialects.postgresql import insert
-import requests
-from itertools import groupby
-
-# import re
-# from bs4 import BeautifulSoup
 
 from fetcher import TrdFetcher, net_sessions
 
-def get_user_data(page):
-    user_data =[]
-    for i in range(page):
-        url = 'https://xueqiu.com/friendships/groups/members.json?uid=3094390085&page={}&gid=0'.format(i+1)
-        response = requests.get(url,headers=headers).json()['users']
-        user_data.extend(response)
-        logging.info('正在打印%s页' % str(i+1))
-        time.sleep(1)
-    return user_data
 
 def get_user_friends(session, userid):
     pass
@@ -30,6 +17,7 @@ def get_user_friends(session, userid):
     #用户信息 https://xueqiu.com/statuses/original/show.json?user_id=1866368892
     #用户推荐 https://xueqiu.com/recommend/user/editor.json?type=0&count=3
     #https://xueqiu.com/friendships/follow_each_other.json?_=1573818570081
+    #用户文章 https://xueqiu.com/v4/statuses/user_timeline.json?page=1&user_id=5135726 
 
 def get_user_cubes(session, userid):
     #关注 https://stock.xueqiu.com/v5/stock/portfolio/stock/list.json?size=1000&category=3&uid=1866368892&pid=-120
@@ -41,54 +29,56 @@ def get_user_cubes(session, userid):
 # https://xueqiu.com/cubes/rebalancing/history.json?cube_symbol=ZH009529&count=20&page=1
 # https://xueqiu.com/cubes/rank/summary.json?symbol=ZH009529&ua=web
 
+
+def get_user_data(session, uid):
+    try:
+        url = f'https://xueqiu.com/statuses/original/show.json?user_id={uid}'
+        resp = session.get(url)
+        data = resp.json()
+        if resp.status_code == 200:
+            user = data['user']
+
+            for k,v in user.items():
+                if isinstance(v, (dict, list, tuple)):
+                    user[k] = json.dumps(v)
+      
+            logging.info(f'user {uid} done, with {session.proxies.get("http")}')
+            return user
+    except Exception as e:
+        print(e)
+
+    logging.warning(f'user {uid} failed, with {session.proxies.get("http")}')
+    return None
+
+
 def get_cubes_info(session, cubes):
-    code = ','.join(cubes)
-    url = f"https://xueqiu.com/cubes/quote.json?code={code}"
-    resp = session.get(url)
-    data = resp.json()
-    if resp.status_code == 200:
-        return list(data.values())
-    elif (resp.status_code == 400 and data['error_code']=='20809'):
-        logging.info(f"{code[:20]} {data['error_description']}")
-        # logging.debug(session.cookies.get_dict())
-        # logging.debug(resp.headers)
-        return [] #组合不存在
-    else:
-        logging.info(f'{url} {resp.status_code} {resp.text} failed')
-    raise Exception('组合信息获取失败')
+    try:
+        code = ','.join(cubes)
+        url = f"https://xueqiu.com/cubes/quote.json?code={code}"
+        resp = session.get(url)
+        data = resp.json()
+        if resp.status_code == 200:
+            return list(data.values())
+        elif (resp.status_code == 400 and data['error_code']=='20809'):
+            logging.info(f"{code[:20]} {data['error_description']}")
+            # logging.debug(session.cookies.get_dict())
+            # logging.debug(resp.headers)
+            return [] #组合不存在
+        else:
+            logging.warning(f"{code[:20]} {data['error_description']}")
+    except Exception as e:
+        print(e)
+
+    return None
 
 
 def process_cube_info(row):
-    for c in ["net_value", "daily_gain", "monthly_gain","total_gain","annualized_gain"]:
+    for c in ["net_value", "daily_gain", "monthly_gain", "total_gain", "annualized_gain"]:
         row[c] = float(row[c])
     row['closed_at'] = int(row['closed_at']) if row['closed_at'] else 0
     row['symbolid'] = int(row['symbol'][2:])
     for c in ['hasexist', 'badges_exist']:
         row[c] = True if row[c].lower()=='true' else False    
-
-# def get_cube_holdings(session, cube):
-#     url = f"https://xueqiu.com/P/{cube}"
-#     resp = session.get(url)
-#     if resp.status_code == 200:
-#         # soup = BeautifulSoup(resp.text, 'html.parser')
-#         # script = soup.find('script', text=re.compile('SNB\.cubeInfo'))
-#         # json_text = re.search(r'^\s*SNB\.cubeInfo\s*=\s*({.*?})\s*;\s*$',
-#         #                 script.string, flags=re.DOTALL | re.MULTILINE).group(1)
-#         pos_start = resp.text.find('SNB.cubeInfo = ') + len('SNB.cubeInfo = ')
-#         pos_end = resp.text.find('SNB.cubePieData', pos_start)
-#         pos_end = resp.text.rfind(';', pos_start, pos_end)
-#         json_text = resp.text[pos_start:pos_end]
-#         # print(json_text[:15], json_text[-20:])
-        
-#         data = json.loads(json_text)
-#         print(f"{cube} {data['name']} {data['follower_count']}: {data['owner']['screen_name']} {data['owner']['followers_count']}")
-#         for d in data["view_rebalancing"]["holdings"]:
-#             print('\t', d['stock_symbol'], d['stock_name'], d['weight'])
-
-#         return data
-#     else:
-#         logging.info(f'{url} {resp.status_code} failed')
-#         return []
 
 
 def get_cube_detail(session, cube):
@@ -130,13 +120,21 @@ def process_cube_detail(detail):
             
             cube['closed_at'] = int(cube['closed_at']) if cube['closed_at'] else 0
             cube['symbolid'] = int(cube['symbol'][2:])
-            cube['annualized_gain'] = cube.pop('annualized_gain_rate')
+            if 'annualized_gain_rate' in cube:  # no this key in SP
+                cube['annualized_gain'] = cube.pop('annualized_gain_rate')
 
             return cube, user
     except Exception as e:
-        print(e, detail[:10], detail[-10:])
+        print(f"detail_process 出错 {e}, {detail[:10]} ... {detail[-10:]}")
 
     return None, None
+
+
+def construct_upsert(ATable):
+    stmt = insert(ATable)
+    update_dict = { c.name:c for c in stmt.excluded if not c.primary_key }  #update dict 
+    ins = stmt.on_conflict_do_update(ATable.primary_key, set_=update_dict)
+    return ins
 
 
 def scrap_cubes_info(engine, step, loopinter, proxies, ctype='ZH', since=0):
@@ -144,22 +142,19 @@ def scrap_cubes_info(engine, step, loopinter, proxies, ctype='ZH', since=0):
     # engine = create_engine("postgres://stockbsd:stockbsd@localhost:5432/postgres")
     metadata = MetaData(bind=engine)
 
-    tpData = ('cubeinfo', 0) if ctype=='ZH' else ('spinfo', 999999)
+    tpData = ('zhinfo', 0) if ctype=='ZH' else ('spinfo', 999999)
     CITable = Table(tpData[0], metadata, autoload=True)
 
     ins = insert(CITable).on_conflict_do_nothing()
-    # stmt = insert(CITable)
-    # update_dict = { c.name:c for c in stmt.excluded if not c.primary_key }  #update dict 
-    # ins = stmt.on_conflict_do_update(CITable.primary_key, set_=update_dict)
     logging.debug(ins)
 
     conn = engine.connect()
-    # maxid = conn.execute("select max(symbolid) from cubeinfo").scalar() or 0
+    # maxid = conn.execute("select max(symbolid) from zhinfo").scalar() or 0
     if since>0:
         nextid = since
     else:
         nextid = (conn.execute(select([func.max(CITable.c.symbolid)])).scalar() or tpData[1]) + 1
-    logging.info(f"{nextid}")
+    logging.info(f"From {nextid}")
 
     ss = net_sessions(proxies)
     interval = loopinter/len(ss)     #一分钟40次
@@ -168,13 +163,9 @@ def scrap_cubes_info(engine, step, loopinter, proxies, ctype='ZH', since=0):
     while True:
         cubes = [f'{ctype}{i:06d}' for i in range(nextid, nextid+step)]
 
-        try:
-            session = ss[loop % len(ss)]
-            loop += 1
-            info = get_cubes_info(session, cubes)
-        except Exception as e:
-            info = None
-            interval = min(interval*2, 300)
+        session = ss[loop % len(ss)]
+        loop += 1
+        info = get_cubes_info(session, cubes)
 
         if info:
             for row in info:
@@ -187,7 +178,9 @@ def scrap_cubes_info(engine, step, loopinter, proxies, ctype='ZH', since=0):
         elif info == []:
             nextid += step  #全空，也可以退出
             if not since: break
-        
+        else: # None失败 
+            interval = min(interval*2, 300)
+
         time.sleep(interval)
 
     for s in ss:
@@ -195,68 +188,80 @@ def scrap_cubes_info(engine, step, loopinter, proxies, ctype='ZH', since=0):
     conn.close()
 
 
-def scrap_missed_cubes_info(engine, step, loopinter, proxies):
-    # engine = create_engine("postgres://stockbsd:stockbsd@localhost:5432/postgres")
+def scrap_misOup_cubes_info(engine, step, loopinter, proxies, maxid, minid, bUpdate, ctype='ZH'):
+    assert(ctype in ('ZH','SP'))
     metadata = MetaData(bind=engine)
-
-    CITable = Table('cubeinfo', metadata, autoload=True)
-    ins = insert(CITable).on_conflict_do_nothing() #CITable.insert()
-    logging.debug(ins)
-
+    tablename = 'zhinfo' if ctype=='ZH' else 'spinfo'
+    CITable = Table(tablename, metadata, autoload=True)
     conn = engine.connect()
-    result = conn.execute("SELECT s.i AS missing_num FROM generate_series(0,2053895) s(i) WHERE NOT EXISTS (SELECT 1 FROM cubeinfo WHERE symbolid = s.i)")
-    missing = [r['missing_num'] for r in result]
+
+    if bUpdate:
+        ins = construct_upsert(CITable)
+
+        sql = (select([CITable.c.symbolid])
+                .where(CITable.c.symbolid > minid).where(CITable.c.symbolid <= maxid)
+                .where(CITable.c.closed_at==0).order_by(CITable.c.symbolid))
+        result = conn.execute(sql)
+        todos = [r['symbolid'] for r in result]
+    else:
+        ins = insert(CITable).on_conflict_do_nothing() #CITable.insert()
+
+        sql = f"SELECT s.i AS missing_num FROM generate_series({minid},{maxid}) s(i) WHERE NOT EXISTS (SELECT 1 FROM {tablename} WHERE symbolid = s.i)"
+        result = conn.execute(sql)
+        todos = [r['missing_num'] for r in result]
+    # logging.debug(ins)
 
     ss = net_sessions(proxies)
     interval = loopinter/len(ss)
 
-    nextid = 0
-    for loop in range(1000000):
-        if nextid > len(missing):
-            break
+    nextid, loop = 0, 0
+    while nextid < len(todos):
+        cubes = [f'{ctype}{i:06d}' for i in todos[nextid: nextid+step]]
 
-        cubes = [f'ZH{i:06d}' for i in missing[nextid: nextid+step]]
-
-        try:
-            session = ss[loop % len(ss)]
-            info = get_cubes_info(session, cubes)
-            nextid += step
-        except Exception as e:
-            info = None
-            interval = min(interval*2, 300)
+        session = ss[loop % len(ss)]
+        loop += 1
+        info = get_cubes_info(session, cubes)
 
         if info:
+            nextid += step
             for row in info:
                 process_cube_info(row)
             
-            # df = pd.DataFrame(info)
-            # df.to_sql('cubeinfo', conn, if_exists="append", index=False)
             conn.execute(ins, info) #autocommit
-            logging.info(f'{nextid} {len(info)}/{step} done, with {session.proxies.get("http")}')
-        
+            logging.info(f'{cubes[-1]} {len(info)}/{step} done, with {session.proxies.get("http")}')
+        elif info == []:
+            nextid += step  # 推进
+
         time.sleep(interval)
 
+    logging.info(f'{todos[-1]} processed')
     for s in ss:
         s.close()
     conn.close()
 
 
-def scrap_cubes_detail(engine, loopinter, proxies, ctype='ZH'):
-    # engine = create_engine("postgres://stockbsd:stockbsd@localhost:5432/postgres")
+def scrap_cubes_detail(engine, loopinter, proxies, maxnv, minnv, bUpdate, ctype):
     metadata = MetaData(bind=engine)
     conn = engine.connect()
 
-    TCubes = Table('cubes', metadata, autoload=True)
+    CI = Table(f'{ctype.lower()}info', metadata, autoload=True)
+    CD = Table(f'{ctype.lower()}detail', metadata, autoload=True)
     TUsers = Table('users', metadata, autoload=True)
 
-    ss = net_sessions(proxies)
+    upsert = construct_upsert(CD)
+    user_ins = construct_upsert(TUsers) #insert(TUsers).on_conflict_do_nothing()
+
+    ss = net_sessions(proxies, 2 if ctype=='SP' else 1)
     interval = loopinter/len(ss)
 
-    #sql = "SELECT l.symbolid FROM cubeinfo l LEFT JOIN cubes r ON r.symbolid = l.symbolid WHERE r.symbolid IS NULL and l.symbolid<2040000"
-    sql = "SELECT symbolid FROM cubeinfo \
-            WHERE NOT EXISTS (SELECT FROM cubes WHERE symbolid=cubeinfo.symbolid) \
-            AND closed_at=0 AND total_gain <= 50 and total_gain > 30 \
-            Order by total_gain desc "
+    sql = (select([CI.c.symbolid])
+            .where(CI.c.closed_at==0)
+            .where(CI.c.net_value <= maxnv).where(CI.c.net_value > minnv)
+            .order_by(CI.c.net_value.desc())
+            )
+    if not bUpdate:
+        sql = sql.where(~exists().where(CI.c.symbolid==CD.c.symbolid))
+                
     result = conn.execute(sql)
 
     loop = 0
@@ -264,41 +269,46 @@ def scrap_cubes_detail(engine, loopinter, proxies, ctype='ZH'):
     for row in result:
         symbol = f"{ctype}{row['symbolid']:06d}"
         session = ss[loop % len(ss)]
-        # session.headers['User-Agent'] = ua.random
         loop += 1
 
         detail = get_cube_detail(session, symbol)
 
         cube, user = process_cube_detail(detail)
         if cube:
-            conn.execute(insert(TCubes).on_conflict_do_nothing(), cube)        
-            conn.execute(insert(TUsers).on_conflict_do_nothing(), user)
+            conn.execute(upsert, cube)
+
+            # if ctype == 'SP':
+            #     user = get_user_data(session, user['id'])
+            # if user:
+            #     conn.execute(user_ins, user)
             # logging.info(f'{symbol} done, with {session.proxies.get("http")}')
+
+        time.sleep(interval)
 
     for s in ss:
         s.close()
     conn.close()
 
 
-def scrap_cubes_detail2(engine, loopinter, proxies, maxtg, mintg, ctype='ZH'):
+def scrap_cubes_detail2(engine, loopinter, proxies, maxnv, minnv, bUpdate, ctype='ZH'):
+    assert(ctype in ('ZH','SP'))
     metadata = MetaData(bind=engine)
     conn = engine.connect()
 
-    CI = Table('cubeinfo', metadata, autoload=True)
-    TCubes = Table('cubes', metadata, autoload=True)
+    CI = Table(f'{ctype.lower()}info', metadata, autoload=True)
+    CD = Table(f'{ctype.lower()}detail', metadata, autoload=True)
     TUsers = Table('users', metadata, autoload=True)
 
-    # sql = "SELECT l.symbolid FROM cubeinfo l LEFT JOIN cubes r ON r.symbolid = l.symbolid WHERE r.symbolid IS NULL and l.symbolid<2040000"
-    # sql = "SELECT symbolid FROM cubeinfo \
-    #         WHERE NOT EXISTS (SELECT FROM cubes WHERE symbolid=cubeinfo.symbolid) \
-    #         AND closed_at=0 AND total_gain <= 10 and total_gain > 5 \
-    #         Order by total_gain desc "
+    ins = construct_upsert(CD)
     sql = (select([CI.c.symbolid])
-            .where(~exists().where(CI.c.symbolid==TCubes.c.symbolid))
             .where(CI.c.closed_at==0)
-            .where(CI.c.total_gain <= maxtg).where(CI.c.total_gain > mintg)
-            .order_by(CI.c.total_gain.desc())
+            .where(CI.c.net_value <= maxnv).where(CI.c.net_value > minnv)
+            .order_by(CI.c.net_value.desc())
             )
+    if not bUpdate:
+        sql = sql.where(~exists().where(CI.c.symbolid==CD.c.symbolid))
+        ins = insert(CD).on_conflict_do_nothing()
+
     result = conn.execute(sql)
 
     dld = TrdFetcher()
@@ -322,21 +332,59 @@ def scrap_cubes_detail2(engine, loopinter, proxies, maxtg, mintg, ctype='ZH'):
             ended = dld.out.empty() and not dld.is_running()
 
         if len(cubelist) >= bulk or (ended and cubelist):
-            conn.execute(insert(TCubes).on_conflict_do_nothing(), cubelist)        
-            conn.execute(insert(TUsers).on_conflict_do_nothing(), userlist)
+            if ctype=='ZH':
+                conn.execute(insert(TUsers).on_conflict_do_nothing(), userlist)
+            conn.execute(ins, cubelist)        
             logging.info(f'finished {len(cubelist)} records')
             cubelist[:] = []
             userlist[:] = []
 
-    # dld.join()
-    # for s in ss:
-    #     s.close()
+    dld.join()
+    conn.close()
+
+
+def scrap_cube_users(engine, loopinter, proxies):
+    metadata = MetaData(bind=engine)
+    conn = engine.connect()
+
+    # CI = Table(f'{ctype.lower()}info', metadata, autoload=True)
+    CD = Table('spdetail', metadata, autoload=True)
+    TUsers = Table('users', metadata, autoload=True)
+
+    ins = insert(TUsers).on_conflict_do_nothing()
+    sql = (select([CD.c.owner_id])
+            .where(~exists().where(CD.c.owner_id==TUsers.c.id))
+            )
+    # print(sql)
+    result = conn.execute(sql)
+
+    dld = TrdFetcher()
+    dld.start(get_user_data, proxies, loopinter, True)
+
+    for row in result:
+        dld.add_job(row['owner_id'])
+    dld.add_endsignal()
+
+    ended = False
+    userlist = []
+    while not ended:
+        try:
+            user = dld.out.get(block=True, timeout=3)
+            if user: userlist.append(user)
+        except Exception as e:
+            ended = dld.out.empty() and not dld.is_running()
+
+        if len(userlist) >= 60 or (ended and userlist):
+            conn.execute(ins, userlist)
+            logging.info(f'finished {len(userlist)} records')
+            userlist[:] = []
+
+    dld.join()
     conn.close()
 
 
 if __name__ == '__main__':
-    import sys
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO, 
+    logging.basicConfig(level=logging.INFO, 
         format='%(asctime)s %(threadName)10s %(levelname)s: %(message)s', datefmt='%H:%M:%S')
 
     engine = create_engine("postgres://stockbsd:stockbsd@localhost:5432/postgres")
@@ -347,11 +395,20 @@ if __name__ == '__main__':
         "socks5://localhost:7080",
         "socks5://localhost:7088",
     ]
-    scrap_cubes_detail2(engine, 2.0, proxies, 5, 0)
-    # scrap_cubes_detail(engine, 1.0)
 
-    # scrap_cubes_info(engine, 50, 2, proxies, ctype='ZH', since=0)
+    scrap_cubes_info(engine, 50, 2, proxies, ctype='ZH', since=0)
     # scrap_cubes_info(engine, 50, 2, proxies, ctype='SP', since=0)
-    # scrap_missed_cube_info(50, 2)
+
+    # for i in range(7):
+    #     scrap_misOup_cubes_info(engine, 50, 2, proxies, 300000*(i+1), 300000*i, True)
+    # scrap_misOup_cubes_info(engine, 50, 2, proxies, 1015000, 1000000, True, ctype='SP')
+
+    # scrap_cubes_detail2(engine, 2.5, proxies, 3, 2.0, True, 'ZH')
+    # scrap_cubes_detail2(engine, 2.0, proxies, 2, 1.5, True, 'SP')
+    
+    scrap_cubes_detail(engine, 5, proxies[:2], 40, 1.5, True, 'SP')
+    # scrap_cubes_detail(engine, 2, proxies, 1.05, 1.0, False, 'ZH')
+
+    scrap_cube_users(engine, 2, proxies)
 
     engine.dispose()
