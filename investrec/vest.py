@@ -34,8 +34,9 @@ def loadRec(fn, conn, bTest):
             if len(df.columns)==17:
                 df['冻结数量'] = df['交易冻结数量'] + df['异常冻结']
                 df.drop(columns=['备注','交易冻结数量','异常冻结','客户代码'], inplace=True)
-                df.rename({"股份余额": "证券数量", "可用股份": "可卖数量", "在途股份": "在途数量","盈亏比例(%)":"盈亏比例"}, 
+                df.rename({"股份余额": "证券数量", "可用股份": "可卖数量", "在途股份": "在途数量"}, 
                     axis=1, inplace=True)
+            df.rename({"盈亏比例(%)":"盈亏比例"}, axis=1, inplace=True)
 
             df['日期'] = fn.name[:8] 
             if bTest:
