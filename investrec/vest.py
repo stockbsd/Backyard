@@ -64,6 +64,11 @@ def updateDB(path, conn, bRecursive, bTest):
 
 def analInvest(conn):
     dfc_all = pd.read_sql_query('select * from cap', conn)
+
+    septop = dfc_all.loc[dfc_all.groupby(['资金账号'])['资产'].idxmax(), ['日期','资产','资金账号']]
+    print(septop)
+    print('历史高点:{:.2f} \n'.format(dfc_all.groupby(['日期'])['资产'].sum().max()))
+
     tday = dfc_all['日期'].max()
     print(tday)
 
@@ -76,10 +81,12 @@ def analInvest(conn):
     dfc_latest['年收益'] = dfc_latest['资产']-dfc_latest['年初'] 
     dfc_latest['年收益率'] = dfc_latest['资产']/dfc_latest['年初'] -1
     print(dfc_latest.to_string(formatters={'总收益率':'{:+.2%}'.format, '年收益率':'{:.2%}'.format}))
+    print()
 
     total = dfc_latest.loc['Total','资产']
     df_all  = pd.read_sql_query('select * from his', conn)
     df_all['分类'] = df_all['证券代码'].map(getType)
+
     df = df_all.loc[df_all['日期'] == tday]
     sumdf = df.groupby('分类')['最新市值', '浮动盈亏'].sum()
     sumdf = sumdf[sumdf['最新市值']>0]
@@ -87,6 +94,15 @@ def analInvest(conn):
     sumdf['浮盈比'] = sumdf['浮动盈亏']/sumdf['最新市值'] #sumdf.apply(lambda r: r['浮动盈亏']/r['最新市值'] , axis=1)
     sumdf['仓比'] = sumdf['最新市值']/total #sumdf.apply(lambda r: r['最新市值']/total, axis=1)
     print(sumdf.to_string(formatters={'浮盈比':'{:+.2%}'.format, '仓比':'{:.2%}'.format}))
+    print()
+
+    df_pie = df.groupby('证券名称')['最新市值', '浮动盈亏'].sum()
+    df_pie['仓位比'] = df_pie['最新市值']/total
+    df_pie = df_pie[df_pie['仓位比'] > 0.005]
+    df_pie.sort_values(by=['最新市值'], inplace=True)
+    df_pie.reset_index(inplace=True)
+    print(df_pie.to_string(index=False,formatters={'证券名称':'{:9}\t'.format,
+        '最新市值':'{:.2f}'.format, '仓位比':'{:5.2%}'.format}))
 
 @click.group(invoke_without_command=True)
 @click.pass_context
