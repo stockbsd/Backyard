@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, MetaData, Table, func, select
 import pandas as pd
 
 
-def analy_cubes(engine, maxnv, minnv, c_fl, p_fl, ctype, bPer=True, bSum=True, sumLine=20):
+def analy_cubes(engine, maxnv, minnv, c_fl, p_fl, ctype, bPer=True, bLatest=True, bSum=True, sumLine=20):
     metadata = MetaData(bind=engine)
     dt = f'{ctype.lower()}detail'
     CI = Table(dt, metadata, autoload=True)
@@ -49,20 +49,20 @@ def analy_cubes(engine, maxnv, minnv, c_fl, p_fl, ctype, bPer=True, bSum=True, s
         allstocks.extend(stocks)
 
         if bPer:
-            sr = json.loads(r['sell_rebalancing'])
-            if sr['updated_at']:
-                yestd = datetime.now() - timedelta(2)
-                yesut = datetime(yestd.year, yestd.month, yestd.day, 0,0,0,0).timestamp()
-                if sr['updated_at']/1000 > yesut:
-                    print(r.name, r.net_value, r.follower_count, r.screen_name, r.followers_count, sum(d['weight'] for d in stocks))
-                    for d in stocks:
-                        print('\t', d['stock_symbol'], d['stock_name'], d['weight'])
+            print(r.name, r.net_value, r.follower_count, r.screen_name, r.followers_count, sum(d['weight'] for d in stocks))
+            for d in stocks:
+                print('\t', d['stock_symbol'], d['stock_name'], d['weight'])
 
+            sr = json.loads(r['sell_rebalancing'])
+            if ('updated_at' in sr) and sr['updated_at']:
+                yestd = datetime.now() - timedelta(3)
+                yesut = datetime(yestd.year, yestd.month, yestd.day, 0,0,0,0).timestamp()
+                if not bLatest or sr['updated_at']/1000 > yesut:
                     print('  更新于', datetime.fromtimestamp(sr['updated_at']/1000))
                     his = sr['rebalancing_histories']
                     for h in his:
                         print('\t', h['stock_name'], h["prev_weight_adjusted"], "->", h["target_weight"])
-                    print()
+            print()
 
     if bSum:
         ava_w = sum(d['weight'] for d in allstocks)/count
@@ -73,7 +73,7 @@ def analy_cubes(engine, maxnv, minnv, c_fl, p_fl, ctype, bPer=True, bSum=True, s
             for s in grp:
                 cg += 1
                 wg += s['weight']
-            if cg * sumLine >= count:
+            if cg * 100 >= count * sumLine:
                 print(f'{k[0]} {k[1]}，{cg} 个组合持有，共{wg:.2f}权重，均{wg/cg:.2f}')
 
     conn.close()
@@ -90,7 +90,9 @@ if __name__ == '__main__':
 
     engine = create_engine("postgres://stockbsd:stockbsd@localhost:5432/postgres")
     
-    analy_cubes(engine, 12, 2, 300, 10000, 'ZH', True, False, 30)
+    analy_cubes(engine, 20, 2, 30, 1, 'ZH', False, True, True, 3)
+    # analy_cubes(engine, 40, 1.5, 10, 2000, 'SP', True, True, True, 5)
+
     # analy_sp(engine)
 
     engine.dispose()

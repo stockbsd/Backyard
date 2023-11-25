@@ -396,19 +396,20 @@ if __name__ == '__main__':
         "socks5://localhost:7088",
     ]
 
-    scrap_cubes_info(engine, 50, 2, proxies, ctype='ZH', since=0)
+    # scrap_cubes_info(engine, 50, 2, proxies, ctype='ZH', since=0)
     # scrap_cubes_info(engine, 50, 2, proxies, ctype='SP', since=0)
 
     # for i in range(7):
     #     scrap_misOup_cubes_info(engine, 50, 2, proxies, 300000*(i+1), 300000*i, True)
     # scrap_misOup_cubes_info(engine, 50, 2, proxies, 1015000, 1000000, True, ctype='SP')
 
-    # scrap_cubes_detail2(engine, 2.5, proxies, 3, 2.0, True, 'ZH')
-    # scrap_cubes_detail2(engine, 2.0, proxies, 2, 1.5, True, 'SP')
+    # scrap_cubes_detail2(engine, 2.0, proxies, 30, 3, True, 'ZH')
+    scrap_cubes_detail2(engine, 2.0, proxies, 3, 1.5, True, 'ZH')
+    # scrap_cubes_detail2(engine, 2.0, proxies, 40, 1.5, True, 'SP')
     
-    scrap_cubes_detail(engine, 5, proxies[:2], 40, 1.5, True, 'SP')
-    # scrap_cubes_detail(engine, 2, proxies, 1.05, 1.0, False, 'ZH')
+    # scrap_cubes_detail(engine, 2, proxies, 12, 2.0, False, 'ZH')
+    # scrap_cubes_detail(engine, 5, proxies, 40, 1.5, True, 'SP')
 
-    scrap_cube_users(engine, 2, proxies)
+    # scrap_cube_users(engine, 2, proxies)
 
     engine.dispose()

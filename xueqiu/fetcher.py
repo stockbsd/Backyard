@@ -61,8 +61,9 @@ def getProxies(n, timeout=2):
 def net_sessions(proxies, cktype=1):
     cks = [
         '',
-        'xq_a_token=c9d3b00a3bd89b210c0024ce7a2e049f437d4df3;', #anonymous user
-        'aliyungf_tc=AQAAAMMMjiWbCw8AJON2ca5e8P94fS2f; s=ck16erzsji; bid=47cef4283992c2b6bd935bdcd877e6dd_jz3m4fcj; snbim_minify=true; u=8347941443; acw_tc=2760822d15756697011777055e6f32a282d01493264a0a75e9187e5bcadf3b; xq_a_token=fd5aeeb678322a4465d174affc962efa5c58784f; xqat=fd5aeeb678322a4465d174affc962efa5c58784f; xq_r_token=03b2f32b7f1dcebccebe3a9a160c558895ca345c; xq_token_expire=Thu%20Jan%2002%202020%2012%3A36%3A21%20GMT%2B0800%20(China%20Standard%20Time); xq_is_login=1;',
+        'xq_a_token=ad923af9f68bb6a13ada0962232589cea11925c4;', #anonymous user
+        'xq_a_token=cc6f0ed1804632049649cc7d39979fc4047a05ad;',
+        # 'aliyungf_tc=AQAAAMMMjiWbCw8AJON2ca5e8P94fS2f; s=ck16erzsji; bid=47cef4283992c2b6bd935bdcd877e6dd_jz3m4fcj; snbim_minify=true; u=8347941443; acw_tc=2760822d15756697011777055e6f32a282d01493264a0a75e9187e5bcadf3b; xq_a_token=fd5aeeb678322a4465d174affc962efa5c58784f; xqat=fd5aeeb678322a4465d174affc962efa5c58784f; xq_r_token=03b2f32b7f1dcebccebe3a9a160c558895ca345c; xq_token_expire=Thu%20Jan%2002%202020%2012%3A36%3A21%20GMT%2B0800%20(China%20Standard%20Time); xq_is_login=1;',
     ]
     if cktype not in [1, 2]:
         cktype = 0

@@ -39,7 +39,7 @@ def getFriend(db):
     return ret 
 
 
-def anadb(days=5, bChat=True, bGh=False, bRoom=False, bCmb=False):
+def anadb(days=5, bChat=True, bGh=False, bRoom=False, bCmb=False, bFilter=False):
     fnames = [name for (name, tp) in getFriend('WCDB_Contact.sqlite') ]
     ep = (int)(time.time()) - 24 * 60 * 60 * days
 
@@ -84,9 +84,12 @@ def anadb(days=5, bChat=True, bGh=False, bRoom=False, bCmb=False):
             #msgs = session.query(C).filter(C.Type == 1).order_by(C.CreateTime.desc()).limit(5)
 
             #filter(C.Type.in_([1,34,50, 3,43,62, 49])).
-            msgs = session.query(C).filter(C.CreateTime>ep).order_by(C.CreateTime.desc()).limit(60)
+            msgs = session.query(C).filter(C.CreateTime>ep)
+            if bFilter:
+                msgs = msgs.filter(C.Type == 1)
+            msgs = msgs.order_by(C.CreateTime.desc()) #.limit(60)
             for m in (msgs):
-                print(time.ctime(m.CreateTime)[:-4] + ('->' if m.Des else '  ') + m.Message)
+                print(time.ctime(m.CreateTime)[:-4] + ('->' if not m.Des else '  ') + m.Message)
 
     session.close()
 
@@ -99,6 +102,7 @@ if '__main__' == __name__:
     parser.add_argument('--cmb', action='store_true', help='', default=False)
     #parser.add_argument('--chat', action='store_true', help='', default=True)
     parser.add_argument('--nochat', dest='chat', action='store_false', help='') 
+    parser.add_argument('--f', dest='filter', action='store_true', help='')
     args = parser.parse_args()
-    anadb(args.days, args.chat, args.gh, args.room, args.cmb)
+    anadb(args.days, args.chat, args.gh, args.room, args.cmb, args.filter)
 
